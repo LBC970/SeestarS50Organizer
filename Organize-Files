@@ -1,0 +1,21 @@
+function Organize-Files {
+    $currentPath = Get-Location
+
+    # Create the folders if they don't exist
+    $folders = @('fits', 'jpg', 'thn')
+    foreach ($folder in $folders) {
+        $path = Join-Path -Path $currentPath -ChildPath $folder
+        if (-not (Test-Path -Path $path)) {
+            New-Item -Path $path -ItemType Directory | Out-Null
+        }
+    }
+
+    # Move *.fit files to the fits folder
+    Get-ChildItem -Path $currentPath -Filter "*.fit" | Move-Item -Destination (Join-Path -Path $currentPath -ChildPath "fits")
+
+    # Move *_thn.jpg files to the thn folder
+    Get-ChildItem -Path $currentPath -Filter "*_thn.jpg" | Move-Item -Destination (Join-Path -Path $currentPath -ChildPath "thn")
+
+    # Move *.jpg files to the jpg folder (excluding *_thn.jpg)
+    Get-ChildItem -Path $currentPath -Filter "*.jpg" | Where-Object { $_.Name -notlike "*_thn.jpg" } | Move-Item -Destination (Join-Path -Path $currentPath -ChildPath "jpg")
+}
