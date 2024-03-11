@@ -31,14 +31,20 @@ function Organize-Files {
     foreach ($pattern in $filePatterns.Keys) {
         if ($pattern -ne "*_thn.*") {
             $files = Get-ChildItem -Path $currentPath -Filter $pattern
-            $folder = $filePatterns[$pattern]
-            $folderPath = Join-Path -Path $currentPath -ChildPath $folder
-            if (-not (Test-Path -Path $folderPath)) {
-                New-Item -Path $folderPath -ItemType Directory | Out-Null
+            if ($pattern -eq "*.jpg") {
+                # Exclude *_thn.* files when moving *.jpg files
+                $files = $files | Where-Object { $_.Name -notlike "*_thn.*" }
             }
-            $files | Move-Item -Destination $folderPath
-            $filesMoved[$folder] += $files.Count
-            Write-Host "Moved $($files.Count) file(s) to the '$folder' folder."
+            if ($files.Count -gt 0) {
+                $folder = $filePatterns[$pattern]
+                $folderPath = Join-Path -Path $currentPath -ChildPath $folder
+                if (-not (Test-Path -Path $folderPath)) {
+                    New-Item -Path $folderPath -ItemType Directory | Out-Null
+                }
+                $files | Move-Item -Destination $folderPath
+                $filesMoved[$folder] = $files.Count
+                Write-Host "Moved $($files.Count) file(s) to the '$folder' folder."
+            }
         }
     }
 
