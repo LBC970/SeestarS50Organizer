@@ -1,21 +1,57 @@
 function Organize-Files {
     $currentPath = Get-Location
 
-    # Create the folders if they don't exist
-    $folders = @('fits', 'jpg', 'thn')
-    foreach ($folder in $folders) {
-        $path = Join-Path -Path $currentPath -ChildPath $folder
-        if (-not (Test-Path -Path $path)) {
-            New-Item -Path $path -ItemType Directory | Out-Null
+    # Define file patterns and corresponding folder names
+    $filePatterns = @{
+        "*.fit" = "fits"
+        "*_thn.*" = "thn"
+        "*.jpg" = "jpg"
+    }
+
+    # Track the number of files moved for each type
+    $filesMoved = @{
+        "fits" = 0
+        "thn" = 0
+        "jpg" = 0
+    }
+
+    # Move *_thn.* files first
+    $thnFiles = Get-ChildItem -Path $currentPath -Filter "*_thn.*"
+    if ($thnFiles.Count -gt 0) {
+        $thnFolderPath = Join-Path -Path $currentPath -ChildPath "thn"
+        if (-not (Test-Path -Path $thnFolderPath)) {
+            New-Item -Path $thnFolderPath -ItemType Directory | Out-Null
+        }
+        $thnFiles | Move-Item -Destination $thnFolderPath
+        $filesMoved["thn"] = $thnFiles.Count
+        Write-Host "Moved $($thnFiles.Count) file(s) to the 'thn' folder."
+    }
+
+    # Move other files
+    foreach ($pattern in $filePatterns.Keys) {
+        if ($pattern -ne "*_thn.*") {
+            $files = Get-ChildItem -Path $currentPath -Filter $pattern
+            $folder = $filePatterns[$pattern]
+            $folderPath = Join-Path -Path $currentPath -ChildPath $folder
+            if (-not (Test-Path -Path $folderPath)) {
+                New-Item -Path $folderPath -ItemType Directory | Out-Null
+            }
+            $files | Move-Item -Destination $folderPath
+            $filesMoved[$folder] += $files.Count
+            Write-Host "Moved $($files.Count) file(s) to the '$folder' folder."
         }
     }
 
-    # Move *.fit files to the fits folder
-    Get-ChildItem -Path $currentPath -Filter "*.fit" | Move-Item -Destination (Join-Path -Path $currentPath -ChildPath "fits")
-
-    # Move *_thn.jpg files to the thn folder
-    Get-ChildItem -Path $currentPath -Filter "*_thn.jpg" | Move-Item -Destination (Join-Path -Path $currentPath -ChildPath "thn")
-
-    # Move *.jpg files to the jpg folder (excluding *_thn.jpg)
-    Get-ChildItem -Path $currentPath -Filter "*.jpg" | Where-Object { $_.Name -notlike "*_thn.jpg" } | Move-Item -Destination (Join-Path -Path $currentPath -ChildPath "jpg")
+    # Check if any files were moved
+    $totalFilesMoved = $filesMoved.Values | Measure-Object -Sum | Select-Object -ExpandProperty Sum
+    if ($totalFilesMoved -eq 0) {
+        Write-Host "No matching files found. No folders created or files moved."
+    } else {
+        # Display a summary of files not moved
+        foreach ($folder in $filesMoved.Keys) {
+            if ($filesMoved[$folder] -eq 0) {
+                Write-Host "No $folder files found."
+            }
+        }
+    }
 }
